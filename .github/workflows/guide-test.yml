@@ -1,0 +1,63 @@
+name: test GUIDE.md (published wheels)
+
+# Follows GUIDE.md exactly, installing from the public index, on fresh machines.
+# Runs on demand and weekly, to catch breakage from conda-forge updates.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  guide:
+    name: guide ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: win2022,        os: windows-2022 }
+          - { name: win2025-vs2026, os: windows-2025-vs2026 }
+          - { name: win11-arm,      os: windows-11-vs2026-arm,
+              installer: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" }
+          - { name: macos15-arm64,  os: macos-15 }
+          - { name: macos26-arm64,  os: macos-26 }
+          - { name: macos15-intel,  os: macos-15-intel }
+    steps:
+      - uses: actions/checkout@v4
+      - name: install Miniforge (GUIDE step 1)
+        if: ${{ !matrix.installer }}
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          auto-activate-base: true
+          activate-environment: ""
+      - name: install Miniforge, x64 installer on ARM (GUIDE step 1)
+        if: ${{ matrix.installer }}
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          installer-url: ${{ matrix.installer }}
+          auto-activate-base: true
+          activate-environment: ""
+      - name: GUIDE steps 2-5 (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd /C CALL {0}
+        run: |
+          call conda create -y -n sdsg -c conda-forge python=3.12 numpy=2.3 scipy matplotlib pandas requests astropy jupyterlab || exit /b 1
+          call conda activate sdsg || exit /b 1
+          python -c "import sys, sysconfig; print(sysconfig.get_platform(), sys.version.split()[0])" || exit /b 1
+          pip install --no-index --find-links https://vasilybelokurov.github.io/sdsg-agama/ agama || exit /b 1
+          python -c "import sys, agama; ok = abs(agama.Potential(type='Plummer').potential([1,0,0]) + 0.5**0.5) < 1e-10; print('AGAMA', agama.__version__, '|', sys.executable); print('PASS' if ok else 'FAIL'); sys.exit(0 if ok else 1)" || exit /b 1
+          python tests\test_course.py || exit /b 1
+          jupyter nbconvert --to notebook --execute tests\smoke.ipynb --output smoke_out.ipynb || exit /b 1
+      - name: GUIDE steps 2-5 (macOS)
+        if: runner.os == 'macOS'
+        shell: bash -el {0}
+        run: |
+          set -e
+          conda create -y -n sdsg -c conda-forge python=3.12 numpy=2.3 scipy matplotlib pandas requests astropy jupyterlab
+          conda activate sdsg
+          python -c "import sys, sysconfig; print(sysconfig.get_platform(), sys.version.split()[0])"
+          pip install --no-index --find-links https://vasilybelokurov.github.io/sdsg-agama/ agama
+          python -c "import sys, agama; ok = abs(agama.Potential(type='Plummer').potential([1,0,0]) + 0.5**0.5) < 1e-10; print('AGAMA', agama.__version__, '|', sys.executable); print('PASS' if ok else 'FAIL'); sys.exit(0 if ok else 1)"
+          python tests/test_course.py
+          jupyter nbconvert --to notebook --execute tests/smoke.ipynb --output smoke_out.ipynb

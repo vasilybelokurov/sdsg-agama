@@ -63,7 +63,7 @@ Expected output, depending on your computer:
 |---|---|
 | Windows (any, including ARM laptops) | `win-amd64 3.12.x` |
 | Mac with Apple chip (M1-M4) | `macosx-11.0-arm64 3.12.x` |
-| Mac with Intel chip | `macosx-10.13-x86_64 3.12.x` or `macosx-11.0-x86_64 3.12.x` |
+| Mac with Intel chip | `macosx-11.0-x86_64 3.12.x` |
 
 Any other result: stop and ask for help.
 
