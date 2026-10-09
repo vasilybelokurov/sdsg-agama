@@ -88,7 +88,7 @@ def main():
     env = dict(os.environ)
     env["SDSG_DEPS_CACHE"] = str(cache)
     if sys.platform == "win32":
-        # Agama f302756 uses the C++ alternative token `or` (interface_python.cpp:7214),
+        # Agama uses the C++ alternative token `or` (interface_python.cpp),
         # which MSVC accepts only with <iso646.h>; force-include it rather than edit the source.
         env["CFLAGS"] = (env.get("CFLAGS", "") + " /FIiso646.h").strip()
     if sys.platform == "darwin":

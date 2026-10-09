@@ -18,7 +18,7 @@ All wheels require **Python 3.12** and are tested with **numpy 2.3** from conda-
 
 ## How the wheels are made
 
-- AGAMA source pinned to commit [`f302756`](https://github.com/GalacticDynamics-Oxford/Agama/commit/f302756b8af2b763db58e278e30478517dc8eea3)
+- AGAMA source pinned to commit [`60d8d8b`](https://github.com/GalacticDynamics-Oxford/Agama/commit/60d8d8b8dce4eea33e500c34700f28ebc6bbfd7b) (23 Jul 2026). The newer commit `f302756` (25 Aug 2026) does not compile with MSVC (it includes the POSIX header `alloca.h`)
   (see `build/AGAMA_COMMIT`).
 - `build/patch_setup.py` makes AGAMA's `setup.py` non-interactive with a fixed policy
   (GSL: yes, Eigen: yes, CVXOPT: no, UNSIO: no) and requires every downloaded
