@@ -87,6 +87,10 @@ def main():
     prefetch(cache)
     env = dict(os.environ)
     env["SDSG_DEPS_CACHE"] = str(cache)
+    if sys.platform == "win32":
+        # Agama f302756 uses the C++ alternative token `or` (interface_python.cpp:7214),
+        # which MSVC accepts only with <iso646.h>; force-include it rather than edit the source.
+        env["CFLAGS"] = (env.get("CFLAGS", "") + " /FIiso646.h").strip()
     if sys.platform == "darwin":
         # Build only against macOS system libraries: no Homebrew/MacPorts GSL or
         # libomp (they would not exist on student Macs and would raise the
