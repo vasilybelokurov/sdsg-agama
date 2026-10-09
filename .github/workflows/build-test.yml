@@ -37,10 +37,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd /C CALL {0}
         run: |
-          conda install -y numpy=2.3 setuptools wheel
-          python -m pip install delvewheel
-          where cl & where nmake & where msbuild
-          python build\build_wheel.py --out wheelhouse
+          call conda install -y numpy=2.3 setuptools wheel || exit /b 1
+          python -m pip install delvewheel || exit /b 1
+          where cl || exit /b 1
+          where nmake || exit /b 1
+          where msbuild || exit /b 1
+          python build\build_wheel.py --out wheelhouse || exit /b 1
       - name: build (macOS)
         if: runner.os == 'macOS'
         shell: bash -el {0}
@@ -53,6 +55,7 @@ jobs:
         with:
           name: wheel-${{ matrix.name }}
           path: wheelhouse/*.whl
+          if-no-files-found: error
       - name: upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -101,15 +104,15 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd /C CALL {0}
         run: |
-          conda create -y -n sdsg -c conda-forge %STUDENT_PKGS%
-          conda activate sdsg
-          python -c "import sys, sysconfig; p = sysconfig.get_platform(); v = sys.version_info[:2]; print(p, v); sys.exit(0 if (v == (3, 12) and p == 'win-amd64') else 'wrong Python')"
-          conda list vcomp
-          python -m pip install --no-index --find-links wheels agama
-          python tests\test_course.py
-          jupyter nbconvert --to notebook --execute tests\smoke.ipynb --output smoke_out.ipynb
-          python -m pip install psutil
-          python -c "import agama, psutil; m = [x.path for x in psutil.Process().memory_maps() if 'vcomp' in x.path.lower()]; print('OpenMP runtime loaded from:', m); import sys; sys.exit(0 if m and all('agama' in x.lower() for x in m) else 'vcomp140 not loaded from the wheel')"
+          call conda create -y -n sdsg -c conda-forge %STUDENT_PKGS% || exit /b 1
+          call conda activate sdsg || exit /b 1
+          python -c "import sys, sysconfig; p = sysconfig.get_platform(); v = sys.version_info[:2]; print(p, v); sys.exit(0 if (v == (3, 12) and p == 'win-amd64') else 'wrong Python')" || exit /b 1
+          call conda list vcomp
+          python -m pip install --no-index --find-links wheels agama || exit /b 1
+          python tests\test_course.py || exit /b 1
+          jupyter nbconvert --to notebook --execute tests\smoke.ipynb --output smoke_out.ipynb || exit /b 1
+          python -m pip install psutil || exit /b 1
+          python -c "import agama, psutil; m = [x.path for x in psutil.Process().memory_maps() if 'vcomp' in x.path.lower()]; print('OpenMP runtime loaded from:', m); import sys; sys.exit(0 if m and all('agama' in x.lower() for x in m) else 'vcomp140 not loaded from the wheel')" || exit /b 1
       - name: student steps (macOS)
         if: runner.os == 'macOS'
         shell: bash -el {0}

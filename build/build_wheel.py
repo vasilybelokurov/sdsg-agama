@@ -58,7 +58,10 @@ def main():
         # Build only against macOS system libraries: no Homebrew/MacPorts GSL or
         # libomp (they would not exist on student Macs and would raise the
         # minimum macOS version to that of the build machine).
-        for k in ("CFLAGS", "CPPFLAGS", "CXXFLAGS", "LDFLAGS", "CPATH", "LIBRARY_PATH"):
+        # Also hide conda from setup.py: it would otherwise link conda's libomp, and a
+        # bundled second copy of libomp next to numpy's crashes ("OMP: Error #15").
+        for k in ("CFLAGS", "CPPFLAGS", "CXXFLAGS", "LDFLAGS", "CPATH", "LIBRARY_PATH",
+                  "CONDA_EXE", "CONDA_PREFIX", "CONDA_PYTHON_EXE", "CONDA_DEFAULT_ENV", "_CE_CONDA"):
             env.pop(k, None)
         bad = ("/opt/homebrew", "/usr/local", "/opt/local")
         env["PATH"] = os.pathsep.join(p for p in env["PATH"].split(os.pathsep)
