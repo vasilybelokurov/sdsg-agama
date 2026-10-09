@@ -4,7 +4,7 @@ Prebuilt [AGAMA](https://github.com/GalacticDynamics-Oxford/Agama) wheels for th
 Cambridge Part II course *Stellar Dynamics and Structure of Galaxies* (SDSG), so that
 students on Windows and macOS can install AGAMA without a C++ compiler.
 
-**Students: follow [GUIDE.md](GUIDE.md).**
+**Students: follow [GUIDE.md](GUIDE.md).** Maintainers: see [MAINTAINING.md](MAINTAINING.md).
 
 ## What is built
 
