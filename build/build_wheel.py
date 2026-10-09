@@ -29,6 +29,36 @@ def run(cmd, **kw):
     subprocess.check_call(cmd, **kw)
 
 
+MIRROR = "https://github.com/vasilybelokurov/sdsg-agama/releases/download/deps-v1/"
+
+
+def prefetch(cache):
+    """Download every pinned dependency into ``cache``: original URL first, then the
+    course mirror (a release of this repo); the SHA-256 must match either way."""
+    import hashlib
+    import urllib.request
+    sys.path.insert(0, str(HERE))
+    from patch_setup import PINNED
+    cache.mkdir(parents=True, exist_ok=True)
+    for url, sha in PINNED.items():
+        name = url.rsplit("/", 1)[-1]
+        dest = cache / name
+        for src in (url, MIRROR + name):
+            try:
+                req = urllib.request.Request(src, headers={"User-Agent": "Mozilla/5.0"})
+                data = urllib.request.urlopen(req, timeout=120).read()
+            except Exception as e:
+                print("  fetch failed:", src, "|", e)
+                continue
+            if hashlib.sha256(data).hexdigest() == sha:
+                dest.write_bytes(data)
+                print("  fetched + verified:", name, "from", src)
+                break
+            print("  HASH MISMATCH from", src)
+        else:
+            sys.exit("could not obtain pinned dependency " + name)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="wheelhouse")
@@ -53,7 +83,10 @@ def main():
             if shutil.which(tool) is None:
                 sys.exit("MSVC tool not on PATH: %s (run inside the x64 MSVC environment)" % tool)
 
+    cache = work.parent / "deps_cache"
+    prefetch(cache)
     env = dict(os.environ)
+    env["SDSG_DEPS_CACHE"] = str(cache)
     if sys.platform == "darwin":
         # Build only against macOS system libraries: no Homebrew/MacPorts GSL or
         # libomp (they would not exist on student Macs and would raise the

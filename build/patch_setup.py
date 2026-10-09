@@ -35,7 +35,15 @@ import hashlib as _sdsg_hashlib
 _SDSG_PINNED = %(pinned)r
 _sdsg_orig_urlretrieve = urlretrieve
 def urlretrieve(url, filename):
-    _sdsg_orig_urlretrieve(url, filename)
+    # use the pre-fetched, hash-checked copy if build_wheel.py provided one
+    cache = os.environ.get('SDSG_DEPS_CACHE')
+    cached = os.path.join(cache, url.rsplit('/', 1)[-1]) if cache else None
+    if cached and os.path.isfile(cached):
+        import shutil as _sdsg_shutil
+        _sdsg_shutil.copyfile(cached, filename)
+        say('    [sdsg] using cached %%s\n' %% cached)
+    else:
+        _sdsg_orig_urlretrieve(url, filename)
     h = _sdsg_hashlib.sha256(open(filename, 'rb').read()).hexdigest()
     if _SDSG_PINNED.get(url) != h:
         say('\nSDSG BUILD ERROR: download not pinned or hash mismatch\n  url=%%s\n  sha256=%%s\n' %% (url, h))
