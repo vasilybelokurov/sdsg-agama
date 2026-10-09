@@ -1,0 +1,122 @@
+name: build and test wheels
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  # The student environment. Keep identical to the command in GUIDE.md.
+  STUDENT_PKGS: python=3.12 numpy=2.3 scipy matplotlib pandas requests astropy jupyterlab
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows-x64,   os: windows-2022 }
+          - { name: macos-arm64,   os: macos-15 }
+          - { name: macos-x86_64,  os: macos-15-intel }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          python-version: "3.12"
+          activate-environment: build
+          channels: conda-forge
+          conda-remove-defaults: "true"
+      - name: MSVC x64 environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd /C CALL {0}
+        run: |
+          conda install -y numpy=2.3 setuptools wheel
+          python -m pip install delvewheel
+          where cl & where nmake & where msbuild
+          python build\build_wheel.py --out wheelhouse
+      - name: build (macOS)
+        if: runner.os == 'macOS'
+        shell: bash -el {0}
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+        run: |
+          conda install -y numpy=2.3 setuptools wheel delocate
+          python build/build_wheel.py --out wheelhouse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.name }}
+          path: wheelhouse/*.whl
+      - name: upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildlog-${{ matrix.name }}
+          path: |
+            agama_src/extras/*.log
+            agama_src/Makefile.local
+
+  test:
+    name: test ${{ matrix.name }}
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: win2022,        os: windows-2022,          wheel: windows-x64 }
+          - { name: win2025-vs2026, os: windows-2025-vs2026,   wheel: windows-x64 }
+          - { name: win11-arm,      os: windows-11-vs2026-arm, wheel: windows-x64,
+              installer: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" }
+          - { name: macos15-arm64,  os: macos-15,              wheel: macos-arm64 }
+          - { name: macos26-arm64,  os: macos-26,              wheel: macos-arm64 }
+          - { name: macos15-intel,  os: macos-15-intel,        wheel: macos-x86_64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ matrix.wheel }}
+          path: wheels
+      - name: install Miniforge (default installer)
+        if: ${{ !matrix.installer }}
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          auto-activate-base: true
+          activate-environment: ""
+      - name: install Miniforge (x64 installer on ARM)
+        if: ${{ matrix.installer }}
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          installer-url: ${{ matrix.installer }}
+          auto-activate-base: true
+          activate-environment: ""
+      - name: student steps (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd /C CALL {0}
+        run: |
+          conda create -y -n sdsg -c conda-forge %STUDENT_PKGS%
+          conda activate sdsg
+          python -c "import sys, sysconfig; p = sysconfig.get_platform(); v = sys.version_info[:2]; print(p, v); sys.exit(0 if (v == (3, 12) and p == 'win-amd64') else 'wrong Python')"
+          conda list vcomp
+          python -m pip install --no-index --find-links wheels agama
+          python tests\test_course.py
+          jupyter nbconvert --to notebook --execute tests\smoke.ipynb --output smoke_out.ipynb
+          python -m pip install psutil
+          python -c "import agama, psutil; m = [x.path for x in psutil.Process().memory_maps() if 'vcomp' in x.path.lower()]; print('OpenMP runtime loaded from:', m); import sys; sys.exit(0 if m and all('agama' in x.lower() for x in m) else 'vcomp140 not loaded from the wheel')"
+      - name: student steps (macOS)
+        if: runner.os == 'macOS'
+        shell: bash -el {0}
+        run: |
+          conda create -y -n sdsg -c conda-forge $STUDENT_PKGS
+          conda activate sdsg
+          python -c "import sys, sysconfig; p = sysconfig.get_platform(); v = sys.version_info[:2]; print(p, v); sys.exit(0 if (v == (3, 12) and p.startswith('macosx')) else 'wrong Python')"
+          python -m pip install --no-index --find-links wheels agama
+          python tests/test_course.py
+          jupyter nbconvert --to notebook --execute tests/smoke.ipynb --output smoke_out.ipynb
