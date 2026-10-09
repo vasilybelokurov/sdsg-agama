@@ -112,7 +112,7 @@ jobs:
           python tests\test_course.py || exit /b 1
           jupyter nbconvert --to notebook --execute tests\smoke.ipynb --output smoke_out.ipynb || exit /b 1
           python -m pip install psutil || exit /b 1
-          python -c "import agama, psutil; m = [x.path for x in psutil.Process().memory_maps() if 'vcomp' in x.path.lower()]; print('OpenMP runtime loaded from:', m); import sys; sys.exit(0 if m and all('agama' in x.lower() for x in m) else 'vcomp140 not loaded from the wheel')" || exit /b 1
+          python -c "import agama, psutil; m = [x.path for x in psutil.Process().memory_maps() if 'vcomp' in x.path.lower()]; print('OpenMP runtime loaded from:', m); import sys; sys.exit(0 if m and all('vcomp140-' in x.lower() for x in m) else 'vcomp140 not loaded from the wheel')" || exit /b 1
       - name: student steps (macOS)
         if: runner.os == 'macOS'
         shell: bash -el {0}
